@@ -24,9 +24,7 @@ pub enum TocNode {
 
     /// A flat array whose leaf elements have been grouped into contiguous
     /// blocks. Each entry is `(element_count, start_offset, end_offset)`.
-    Blocked {
-        blocks: Vec<(usize, usize, usize)>,
-    },
+    Blocked { blocks: Vec<(usize, usize, usize)> },
 
     /// A container (map or array) with its own byte range and child entries.
     Branch {
@@ -79,18 +77,14 @@ impl TocNode {
                 rmp::encode::write_str(out, "t").map_err(to_py_err)?;
                 match children {
                     TocChildren::Map(entries) => {
-                        rmp::encode::write_map_len(out, entries.len() as u32)
-                            .map_err(to_py_err)?;
+                        rmp::encode::write_map_len(out, entries.len() as u32).map_err(to_py_err)?;
                         for (key, child) in entries {
-                            let key_bytes =
-                                pack_with_python_packer(py, packer, key.bind(py))?;
-                            out.write_all(&key_bytes).map_err(to_py_err)?;
+                            write_native_or_python_packed(py, packer, key.bind(py), out)?;
                             child.encode_msgpack(py, packer, out)?;
                         }
                     }
                     TocChildren::Array(items) => {
-                        rmp::encode::write_array_len(out, items.len() as u32)
-                            .map_err(to_py_err)?;
+                        rmp::encode::write_array_len(out, items.len() as u32).map_err(to_py_err)?;
                         for child in items {
                             child.encode_msgpack(py, packer, out)?;
                         }
@@ -122,6 +116,58 @@ pub fn pack_with_python_packer(
         .call_method1("pack", (obj,))?
         .downcast_into::<PyBytes>()?;
     Ok(packed.as_bytes().to_vec())
+}
+
+/// Writes packed msgpack bytes via Python-level `Packer` directly into `out`.
+fn write_with_python_packer<W: Write>(
+    py: Python<'_>,
+    packer: &Py<PyAny>,
+    obj: &Bound<'_, PyAny>,
+    out: &mut W,
+) -> PyResult<()> {
+    let packed = packer
+        .bind(py)
+        .call_method1("pack", (obj,))?
+        .downcast_into::<PyBytes>()?;
+    out.write_all(packed.as_bytes()).map_err(to_py_err)?;
+    Ok(())
+}
+
+/// Writes msgpack bytes for common scalar types directly, with Python packer fallback.
+fn write_native_or_python_packed<W: Write>(
+    py: Python<'_>,
+    packer: &Py<PyAny>,
+    obj: &Bound<'_, PyAny>,
+    out: &mut W,
+) -> PyResult<()> {
+    if obj.is_none() {
+        rmp::encode::write_nil(out).map_err(to_py_err)?;
+        return Ok(());
+    }
+
+    if obj.is_instance_of::<pyo3::types::PyBool>() {
+        let value: bool = obj.extract()?;
+        rmp::encode::write_bool(out, value).map_err(to_py_err)?;
+        return Ok(());
+    }
+
+    if obj.is_instance_of::<pyo3::types::PyInt>() {
+        if let Ok(value) = obj.extract::<i64>() {
+            rmp::encode::write_sint(out, value).map_err(to_py_err)?;
+            return Ok(());
+        }
+        if let Ok(value) = obj.extract::<u64>() {
+            rmp::encode::write_uint(out, value).map_err(to_py_err)?;
+            return Ok(());
+        }
+    }
+
+    if let Ok(s) = obj.downcast::<pyo3::types::PyString>() {
+        rmp::encode::write_str(out, s.to_str()?).map_err(to_py_err)?;
+        return Ok(());
+    }
+
+    write_with_python_packer(py, packer, obj, out)
 }
 
 /// Writes a `[start, end]` position pair as a 2-element msgpack array.
