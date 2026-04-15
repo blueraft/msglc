@@ -1,6 +1,10 @@
 [build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
+requires = ["maturin>=1.5,<2.0"]
+build-backend = "maturin"
+
+[tool.maturin]
+python-source = "src"
+module-name = "msglc._msglc"
 
 [project]
 version = "260319"
@@ -77,3 +81,8 @@ ignore = ["B008", "E501"]
 [tool.pytest.ini_options]
 asyncio_mode = "strict"
 asyncio_default_fixture_loop_scope = "function"
+
+[dependency-groups]
+dev = [
+    "maturin>=1.13.1",
+]
