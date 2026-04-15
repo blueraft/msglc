@@ -6,10 +6,7 @@
 
 mod core;
 
-use crate::core::{
-    build_container_node, encode_header_value, pack_with_python_packer, to_py_err, TocChildren,
-    TocNode,
-};
+use crate::core::{build_container_node, encode_header_value, to_py_err, TocChildren, TocNode};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes, PyDict, PyList, PySet, PyTuple};
 use pyo3::{exceptions::PyOverflowError, ffi};
@@ -192,8 +189,13 @@ impl<'py, W: Write + Seek> StreamTocBuilder<'py, W> {
 
     // -- Primitive encoding ------------------------------------------------
 
-    fn pack_object_bytes(&self, obj: &Bound<'_, PyAny>) -> PyResult<Vec<u8>> {
-        pack_with_python_packer(self.py, &self.python_packer, obj)
+    fn append_with_python_packer(&mut self, obj: &Bound<'_, PyAny>) -> PyResult<()> {
+        let packed = self
+            .python_packer
+            .bind(self.py)
+            .call_method1("pack", (obj,))?
+            .downcast_into::<PyBytes>()?;
+        self.write_bytes_to_scratch(packed.as_bytes())
     }
 
     fn try_append_fast_int(&mut self, obj: &Bound<'_, PyAny>) -> PyResult<bool> {
@@ -268,8 +270,7 @@ impl<'py, W: Write + Seek> StreamTocBuilder<'py, W> {
         if self.try_append_native(obj)? {
             return Ok(());
         }
-        let bytes = self.pack_object_bytes(obj)?;
-        self.write_bytes_to_scratch(&bytes)
+        self.append_with_python_packer(obj)
     }
 
     // -- NumPy handling ----------------------------------------------------
@@ -462,7 +463,6 @@ impl NativeWriter {
         builder.writer_mut().flush().map_err(to_py_err)?;
         Ok(())
     }
-
 }
 
 // ---------------------------------------------------------------------------
