@@ -25,6 +25,7 @@ from generate import (
 )
 
 from msglc import config, dump
+from msglc.config import configure
 from msglc.reader import LazyReader, LazyStats
 from msglc.unpacker import MsgpackUnpacker, MsgspecUnpacker
 
@@ -127,7 +128,10 @@ def test_matrix(prepare, benchmark, size, total, unpacker):
         benchmark(compare, 1, size, total, unpacker)
 
 
-def test_serialize_large_json(tmpdir, benchmark, repo_data):
+@pytest.mark.parametrize("toc_v2", [True, False])
+def test_serialize_large_json(tmpdir, benchmark, repo_data, toc_v2):
+    configure(toc_v2=toc_v2)
+
     def serialize_large_json():
         dump("repo_data.msg", repo_data)
 
@@ -136,6 +140,9 @@ def test_serialize_large_json(tmpdir, benchmark, repo_data):
 
 
 def test_random_huge_json(tmpdir, benchmark, random_huge_data):
+@pytest.mark.parametrize("toc_v2", [True, False])
+def test_random_huge_json(tmpdir, benchmark, random_huge_data, toc_v2):
+    configure(toc_v2=toc_v2)
     with tmpdir.as_cwd():
         benchmark(dump, "data.msg", random_huge_data)
 
