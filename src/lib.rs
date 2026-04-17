@@ -194,7 +194,7 @@ impl<'py, W: Write + Seek> StreamTocBuilder<'py, W> {
             .python_packer
             .bind(self.py)
             .call_method1("pack", (obj,))?
-            .downcast_into::<PyBytes>()?;
+            .cast_into::<PyBytes>()?;
         self.write_bytes_to_scratch(packed.as_bytes())
     }
 
@@ -239,12 +239,12 @@ impl<'py, W: Write + Seek> StreamTocBuilder<'py, W> {
         if obj.is_instance_of::<pyo3::types::PyInt>() {
             return self.try_append_fast_int(obj);
         }
-        if let Ok(s) = obj.downcast::<pyo3::types::PyString>() {
+        if let Ok(s) = obj.cast::<pyo3::types::PyString>() {
             let value = s.to_str()?;
             self.write_to_scratch(|b| rmp::encode::write_str(b, value))?;
             return Ok(true);
         }
-        if let Ok(b) = obj.downcast::<PyBytes>() {
+        if let Ok(b) = obj.cast::<PyBytes>() {
             self.flush_scratch()?;
             rmp::encode::write_bin(&mut self.writer, b.as_bytes()).map_err(to_py_err)?;
             return Ok(true);
@@ -252,7 +252,7 @@ impl<'py, W: Write + Seek> StreamTocBuilder<'py, W> {
         if obj.is_instance_of::<pyo3::types::PyByteArray>()
             || obj.is_instance_of::<pyo3::types::PyMemoryView>()
         {
-            let bytes = obj.call_method0("tobytes")?.downcast_into::<PyBytes>()?;
+            let bytes = obj.call_method0("tobytes")?.cast_into::<PyBytes>()?;
             self.flush_scratch()?;
             rmp::encode::write_bin(&mut self.writer, bytes.as_bytes()).map_err(to_py_err)?;
             return Ok(true);
@@ -285,7 +285,7 @@ impl<'py, W: Write + Seek> StreamTocBuilder<'py, W> {
 
         if self.numpy_encoder {
             let start = self.rel_pos();
-            let dumped = obj.call_method0("dumps")?.downcast_into::<PyBytes>()?;
+            let dumped = obj.call_method0("dumps")?.cast_into::<PyBytes>()?;
             self.flush_scratch()?;
             rmp::encode::write_bin_len(&mut self.writer, dumped.as_bytes().len() as u32)
                 .map_err(to_py_err)?;
@@ -358,22 +358,22 @@ impl<'py, W: Write + Seek> StreamTocBuilder<'py, W> {
     fn pack(&mut self, obj: &Bound<'py, PyAny>) -> PyResult<TocNode> {
         let start_pos = self.rel_pos();
 
-        if let Ok(dict) = obj.downcast::<PyDict>() {
+        if let Ok(dict) = obj.cast::<PyDict>() {
             return self.pack_dict(start_pos, dict);
         }
-        if let Ok(list) = obj.downcast::<PyList>() {
+        if let Ok(list) = obj.cast::<PyList>() {
             return self.pack_sequence(start_pos, list.iter(), list.len());
         }
-        if let Ok(tuple) = obj.downcast::<PyTuple>() {
+        if let Ok(tuple) = obj.cast::<PyTuple>() {
             return self.pack_sequence(start_pos, tuple.iter(), tuple.len());
         }
-        if obj.downcast::<PySet>().is_ok() {
+        if obj.cast::<PySet>().is_ok() {
             let sorted = self
                 .py
                 .import("builtins")?
                 .getattr("sorted")?
                 .call1((obj,))?
-                .downcast_into::<PyList>()?;
+                .cast_into::<PyList>()?;
             return self.pack_sequence(start_pos, sorted.iter(), sorted.len());
         }
         if let Some(node) = self.try_pack_numpy(obj)? {

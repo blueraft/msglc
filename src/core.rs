@@ -115,7 +115,7 @@ fn write_with_python_packer<W: Write>(
     let packed = packer
         .bind(py)
         .call_method1("pack", (obj,))?
-        .downcast_into::<PyBytes>()?;
+        .cast_into::<PyBytes>()?;
     out.write_all(packed.as_bytes()).map_err(to_py_err)?;
     Ok(())
 }
@@ -149,7 +149,7 @@ fn write_native_or_python_packed<W: Write>(
         }
     }
 
-    if let Ok(s) = obj.downcast::<pyo3::types::PyString>() {
+    if let Ok(s) = obj.cast::<pyo3::types::PyString>() {
         rmp::encode::write_str(out, s.to_str()?).map_err(to_py_err)?;
         return Ok(());
     }

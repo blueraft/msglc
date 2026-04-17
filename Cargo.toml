@@ -8,9 +8,9 @@ name = "_msglc"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-pyo3 = { version = "0.23" }
+pyo3 = { version = "0.28" }
 rmp = "0.8"
-numpy = "0.23"
+numpy = "0.28"
 
 [features]
 extension-module = ["pyo3/extension-module"]
