@@ -52,6 +52,13 @@ def _upsert(source: BufferReader, target: str, fs: FileSystem | None):
             s3_file.write(chunk)
 
 
+def _upload_file(local_path: str, target: str, fs: FileSystem):
+    with open(local_path, "rb", buffering=config.write_buffer_size) as source:
+        with fs.open(target, "wb", block_size=config.write_buffer_size) as sink:
+            while chunk := source.read(config.write_buffer_size):
+                sink.write(chunk)
+
+
 class LazyWriter:
     magic: bytes = b"msglc-2024".rjust(max_magic_len, b"\0")
 
@@ -112,9 +119,18 @@ class LazyWriter:
         self._no_more_writes: bool = False
 
     def _can_stream_native(self) -> bool:
-        return config.writer_engine == "native_toc" and isinstance(
-            self._buffer_or_path, (str, UPath)
-        )
+        if config.writer_engine != "native_toc":
+            return False
+
+        if isinstance(self._buffer_or_path, str):
+            return True
+
+        if isinstance(self._buffer_or_path, UPath):
+            # Keep parity with the existing Python path:
+            # when an explicit fs is supplied with UPath, UPath.open() semantics win.
+            return self._fs is None
+
+        return False
 
     def __enter__(self):
         increment_gc_counter()
@@ -197,8 +213,7 @@ class LazyWriter:
                     temp_path = tmp.name
                 try:
                     TOC_v2().dump_to_file_streaming(obj, temp_path)
-                    # Upload using fsspec's optimized put
-                    effective_fs.put(temp_path, path)
+                    _upload_file(temp_path, path, effective_fs)
                 finally:
                     if os.path.exists(temp_path):
                         os.remove(temp_path)
