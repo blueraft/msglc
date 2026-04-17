@@ -24,6 +24,8 @@ from fsspec.implementations.local import LocalFileSystem
 from msgpack import Packer, packb, unpackb
 from upath import UPath
 
+from msglc._msglc import NativeWriter as TOC_v2
+
 from .config import (
     config,
     decrement_gc_counter,
@@ -31,7 +33,6 @@ from .config import (
     max_magic_len,
 )
 from .toc import TOC
-from msglc._msglc import NativeWriter as TOC_v2
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -111,9 +112,8 @@ class LazyWriter:
         self._no_more_writes: bool = False
 
     def _can_stream_native(self) -> bool:
-        return (
-            config.writer_engine == "native_toc"
-            and isinstance(self._buffer_or_path, (str, UPath))
+        return config.writer_engine == "native_toc" and isinstance(
+            self._buffer_or_path, (str, UPath)
         )
 
     def __enter__(self):
