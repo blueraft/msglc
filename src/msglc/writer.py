@@ -112,7 +112,7 @@ class LazyWriter:
 
     def _can_stream_native(self) -> bool:
         return (
-            (config.toc_v2 or config.writer_engine == "native_toc")
+            config.writer_engine == "native_toc"
             and isinstance(self._buffer_or_path, (str, UPath))
         )
 

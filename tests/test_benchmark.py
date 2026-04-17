@@ -128,9 +128,9 @@ def test_matrix(prepare, benchmark, size, total, unpacker):
         benchmark(compare, 1, size, total, unpacker)
 
 
-@pytest.mark.parametrize("toc_v2", [True, False])
-def test_serialize_large_json(tmpdir, benchmark, repo_data, toc_v2):
-    configure(toc_v2=toc_v2)
+@pytest.mark.parametrize("writer_engine", ["python", "native_toc"])
+def test_serialize_large_json(tmpdir, benchmark, repo_data, writer_engine):
+    configure(writer_engine=writer_engine)
 
     def serialize_large_json():
         dump("repo_data.msg", repo_data)
@@ -139,10 +139,9 @@ def test_serialize_large_json(tmpdir, benchmark, repo_data, toc_v2):
         benchmark(serialize_large_json)
 
 
-def test_random_huge_json(tmpdir, benchmark, random_huge_data):
-@pytest.mark.parametrize("toc_v2", [True, False])
-def test_random_huge_json(tmpdir, benchmark, random_huge_data, toc_v2):
-    configure(toc_v2=toc_v2)
+@pytest.mark.parametrize("writer_engine", ["python", "native_toc"])
+def test_random_huge_json(tmpdir, benchmark, random_huge_data, writer_engine):
+    configure(writer_engine=writer_engine)
     with tmpdir.as_cwd():
         benchmark(dump, "data.msg", random_huge_data)
 

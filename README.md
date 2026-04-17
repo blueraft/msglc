@@ -170,7 +170,7 @@ The Rust backend is opt-in and can be enabled via configuration:
 from msglc.config import configure
 
 # Enable the high-performance Rust TOC engine
-configure(toc_v2=True)
+configure(writer_engine="native_toc")
 ```
 
 By default, the Python-based engine is used for maximum compatibility.
