@@ -53,10 +53,12 @@ def _upsert(source: BufferReader, target: str, fs: FileSystem | None):
 
 
 def _upload_file(local_path: str, target: str, fs: FileSystem):
-    with open(local_path, "rb", buffering=config.write_buffer_size) as source:
-        with fs.open(target, "wb", block_size=config.write_buffer_size) as sink:
-            while chunk := source.read(config.write_buffer_size):
-                sink.write(chunk)
+    with (
+        open(local_path, "rb", buffering=config.write_buffer_size) as source,
+        fs.open(target, "wb", block_size=config.write_buffer_size) as sink,
+    ):
+        while chunk := source.read(config.write_buffer_size):
+            sink.write(chunk)
 
 
 class LazyWriter:

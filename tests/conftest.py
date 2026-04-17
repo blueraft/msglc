@@ -19,6 +19,7 @@ from urllib.request import urlopen
 
 import pytest
 from generate import generate_random_json
+
 from msglc.config import configure
 
 
