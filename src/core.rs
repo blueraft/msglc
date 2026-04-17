@@ -105,19 +105,6 @@ pub fn to_py_err(e: impl std::fmt::Display) -> PyErr {
     PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string())
 }
 
-/// Packs a Python object into msgpack bytes via the Python-level `Packer`.
-pub fn pack_with_python_packer(
-    py: Python<'_>,
-    packer: &Py<PyAny>,
-    obj: &Bound<'_, PyAny>,
-) -> PyResult<Vec<u8>> {
-    let packed = packer
-        .bind(py)
-        .call_method1("pack", (obj,))?
-        .downcast_into::<PyBytes>()?;
-    Ok(packed.as_bytes().to_vec())
-}
-
 /// Writes packed msgpack bytes via Python-level `Packer` directly into `out`.
 fn write_with_python_packer<W: Write>(
     py: Python<'_>,
