@@ -146,7 +146,7 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     needs: [linux, windows, macos, sdist]
-    if: "contains(github.event.head_commit.message, '[publish]')"
+    if: "github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[publish]')"
     permissions:
       id-token: write
     steps:
